@@ -31,7 +31,5 @@ workflow {
             tuple(barcode, file)
         }
 
-    //channel_fastq.view()
-    // Uncomment the line below to run the process
     Bakta(channel_fastq)
 }
