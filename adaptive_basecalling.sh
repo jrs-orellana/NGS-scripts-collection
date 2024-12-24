@@ -18,8 +18,9 @@ output_hac="/home/user/project_name/basecalling_AS/hac"
 output_super="/home/user/project_name/basecalling_AS/super"
 
 # CSV file for adaptive sampling
-csv_file="/home/user/project_name/adaptive_sampling_PBA00948_b23810a2_d46c149c.csv"
+csv_file="/home/user/project_name/adaptive_sampling.csv"
 
+THREADS = 30
 # Function to perform basecalling, demultiplexing, and trimming
 run_basecaller() {
     local model=$1
@@ -30,18 +31,18 @@ run_basecaller() {
     start_time=$(date +%s)  # Start time
 
     # Step 1: Basecalling with Dorado specifying the kit
-    dorado basecaller --device cuda:0,1 --models-directory "/home/oppenheimer/Documents/models" --output-dir $output $model $pod5files --kit-name SQK-NBD114-96
+    dorado basecaller --device cuda:0,1 --models-directory "/home/user/project_name/models" --output-dir $output $model $pod5files --kit-name SQK-KITNAME
         
     end_time=$(date +%s)  # End time for basecalling
     duration=$((end_time - start_time))
     echo "Basecalling with model $model_name completed in $duration seconds."
 
     # Save runtime in a .txt file in the output folder
-    echo "Runtime for model $model_name: $duration seconds" > "$output/tiempo_$model_name.txt"
+    echo "Runtime for model $model_name: $duration seconds" > "$output/time_$model_name.txt"
 
     # Step 2: Demultiplexing with Dorado
     echo "Starting demultiplexing for model: $model_name"
-    dorado demux --output-dir "$output/demux" --no-classify $output/calls_*.bam -t 30
+    dorado demux --output-dir "$output/demux" --no-classify $output/calls_*.bam -t $THREADS
 
     # Step 3: Rename barcodes
     echo "Renaming barcodes for demultiplexed files: $model_name"
@@ -63,7 +64,7 @@ run_basecaller() {
     for bam_file in $output/demux/*.bam; do
         echo "Processing file $bam_file"
 
-        # Filter channels 1 to 1500
+        # Filter channels 1 to 2000
         samtools view -h "$bam_file" | \
         awk 'BEGIN {OFS="\t"} /^@/ {print; next} {
             ch = -1;
@@ -74,11 +75,11 @@ run_basecaller() {
                     break;
                 }
             }
-            if(ch >= 1 && ch <= 1500) print
+            if(ch >= 1 && ch <= 2000) print
         }' | \
         samtools view -b -o "$output/demux/AS/$(basename "${bam_file%.bam}.bam")" -
 
-        # Filter channels 1501 to 3000
+        # Filter channels 2001 to 4000
         samtools view -h "$bam_file" | \
         awk 'BEGIN {OFS="\t"} /^@/ {print; next} {
             ch = -1;
@@ -89,7 +90,7 @@ run_basecaller() {
                     break;
                 }
             }
-            if(ch >= 1501 && ch <= 3000) print
+            if(ch >= 2001 && ch <= 4000) print
         }' | \
         samtools view -b -o "$output/demux/STANDARD/$(basename "${bam_file%.bam}.bam")" -
     done
